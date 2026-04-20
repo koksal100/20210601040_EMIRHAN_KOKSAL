@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SYSTEM_PROMPT="You are a CLI tool. Output plain text only. No yapping. Keep the output concise."
+
+require_env() {
+  local name="$1"
+  if [[ -z "${!name:-}" ]]; then
+    printf 'Error: %s is not set.\n' "$name" >&2
+    exit 1
+  fi
+}
+
+require_cmd() {
+  local name="$1"
+  if ! command -v "$name" >/dev/null 2>&1; then
+    printf 'Error: required dependency not found: %s\n' "$name" >&2
+    exit 1
+  fi
+}
+
+require_env "ASK_API_URL"
+require_env "ASK_MODEL"
+require_env "ASK_API_KEY"
+require_cmd "curl"
+require_cmd "jq"
+
+args_prompt="${*:-}"
+stdin_prompt=""
+
+if [[ ! -t 0 ]]; then
+  stdin_prompt="$(cat)"
+fi
+
+if [[ -n "$args_prompt" && -n "$stdin_prompt" ]]; then
+  user_prompt="${args_prompt}"$'\n\n'"${stdin_prompt}"
+elif [[ -n "$args_prompt" ]]; then
+  user_prompt="$args_prompt"
+elif [[ -n "$stdin_prompt" ]]; then
+  user_prompt="$stdin_prompt"
+else
+  printf 'Usage: ask "your prompt"\n' >&2
+  printf 'You can also pipe input: cat file.txt | ask "Explain this"\n' >&2
+  exit 1
+fi
+
+payload="$(jq -n \
+  --arg model "$ASK_MODEL" \
+  --arg system "$SYSTEM_PROMPT" \
+  --arg user "$user_prompt" \
+  '{
+    model: $model,
+    messages: [
+      { role: "system", content: $system },
+      { role: "user", content: $user }
+    ]
+  }')"
+
+response="$(curl -sS "$ASK_API_URL" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ASK_API_KEY" \
+  -d "$payload")"
+
+content="$(printf '%s' "$response" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)"
+
+if [[ -n "$content" ]]; then
+  printf '%s\n' "$content"
+  exit 0
+fi
+
+error_message="$(printf '%s' "$response" | jq -r '.error.message // empty' 2>/dev/null || true)"
+if [[ -n "$error_message" ]]; then
+  printf 'API Error: %s\n' "$error_message" >&2
+  exit 1
+fi
+
+printf 'Error: unexpected API response.\n' >&2
+printf '%s\n' "$response" >&2
+exit 1
