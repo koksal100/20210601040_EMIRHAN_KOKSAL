@@ -1,0 +1,5 @@
+- Use descriptive variable names like `API_URL`.
+- Rename functions for consistency, e.g., `create_temp_response`.
+- Remove duplicated code by extracting error handling functions.
+- Split the script into separate files or modules.
+- Replace hardcoded strings with named constants.

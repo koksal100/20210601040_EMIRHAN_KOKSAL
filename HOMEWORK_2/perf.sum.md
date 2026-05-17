@@ -1,0 +1,5 @@
+- Remove redundant string trimming using ${parameter//[[:space:]]/}
+- Use process substitution or named pipes instead of mktemp
+- Pass ASK_API_KEY as an environment variable to curl
+- Compile jq expression beforehand to improve performance
+- Use trap with specific signals instead of EXIT

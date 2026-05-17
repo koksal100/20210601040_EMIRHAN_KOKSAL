@@ -1,0 +1,5 @@
+- Store API keys securely using environment variables or a secrets manager.
+- Validate user input to prevent injection attacks and data corruption.
+- Use HTTPS for all API requests to prevent eavesdropping and tampering.
+- Implement robust error handling to prevent information disclosure and crashes.
+- Implement rate limiting to prevent abuse and denial-of-service attacks.
